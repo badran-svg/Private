@@ -1,10 +1,15 @@
 package com.alwarqi.ess;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintManager;
 import android.view.Gravity;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -24,6 +29,26 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_URL = "server_url";
     private static final String DEFAULT_URL = "http://192.168.11.59:5050";
 
+    public class PrintBridge {
+        @JavascriptInterface
+        public void printHtml(final String jobName, final String htmlContent) {
+            runOnUiThread(() -> {
+                WebView pw = new WebView(MainActivity.this);
+                pw.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public void onPageFinished(WebView view, String url) {
+                        PrintManager pm = (PrintManager) getSystemService(Context.PRINT_SERVICE);
+                        if (pm != null) {
+                            PrintDocumentAdapter adapter = pw.createPrintDocumentAdapter(jobName);
+                            pm.print(jobName, adapter, new PrintAttributes.Builder().build());
+                        }
+                    }
+                });
+                pw.loadDataWithBaseURL(null, htmlContent, "text/html", "UTF-8", null);
+            });
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
         s.setUseWideViewPort(true);
         s.setLoadWithOverviewMode(true);
 
+        webView.addJavascriptInterface(new PrintBridge(), "AndroidPrint");
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
             @Override
